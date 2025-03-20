@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mapper.DashboardMapper">
+
+    <!-- 获取用户总数 -->
+    <select id="countUsers" resultType="int">
+        SELECT COUNT(*) FROM users;
+    </select>
+
+    <!-- 获取捐款总额 -->
+    <select id="sumDonations" resultType="double">
+        SELECT SUM(raised_amount) FROM projects;
+    </select>
+
+    <!-- 获取弹幕总数 -->
+    <select id="countBarrages" resultType="int">
+        SELECT COUNT(*) FROM danmu;
+    </select>
+
+
+    <!-- 获取近七天的日期列表 -->
+    <select id="getLastSevenDaysDates" resultType="java.lang.String">
+        SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL seq.seq DAY), '%Y-%m-%d') AS date
+        FROM (
+            SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+            UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+            ) seq
+        ORDER BY date;
+    </select>
+
+    <!-- 获取近七天每天的新增弹幕数 -->
+    <select id="getLastSevenDaysBarrages" resultType="java.lang.Integer">
+        SELECT IFNULL(COUNT(d.id), 0) AS count
+        FROM (
+            SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL seq.seq DAY), '%Y-%m-%d') AS date
+            FROM (
+            SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+            UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+            ) seq
+            ) dates
+            LEFT JOIN danmu d ON DATE(d.created_at) = dates.date
+        GROUP BY dates.date
+        ORDER BY dates.date;
+    </select>
+
+    <!-- 获取近七天每天的新增用户数 -->
+    <select id="getLastSevenDaysNewUsers" resultType="java.lang.Integer">
+        SELECT IFNULL(COUNT(u.id), 0) AS count
+        FROM (
+            SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL seq.seq DAY), '%Y-%m-%d') AS date
+            FROM (
+            SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+            UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+            ) seq
+            ) dates
+            LEFT JOIN users u ON DATE(u.created_at) = dates.date
+        GROUP BY dates.date
+        ORDER BY dates.date;
+    </select>
+
+
+    <!-- 获取近十天的日期列表 -->
+    <select id="getLastTenDaysDates" resultType="java.lang.String">
+        SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL seq.seq DAY), '%Y-%m-%d') AS date
+        FROM (
+            SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+            UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+            UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9
+            ) seq
+        ORDER BY date;
+    </select>
+
+    <!-- 获取近十天每天的捐赠金额 -->
+    <select id="getLastTenDaysDonations" resultType="java.lang.Double">
+        SELECT IFNULL(SUM(fr.amount), 0) AS total
+        FROM (
+                 SELECT DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL seq.seq DAY), '%Y-%m-%d') AS date
+                 FROM (
+                     SELECT 0 AS seq UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3
+                     UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6
+                     UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9
+                     ) seq
+             ) dates
+                 LEFT JOIN finance_records fr ON DATE(fr.time) = dates.date
+        GROUP BY dates.date
+        ORDER BY dates.date;
+    </select>
+
+
+    <!-- 获取捐款排行榜数据 -->
+    <select id="getDonationRanking" resultType="com.example.vo.DonationRankingVO">
+        SELECT
+        ROW_NUMBER() OVER (ORDER BY SUM(fr.amount) DESC) AS user_rank, <!-- 使用 user_rank 作为别名 -->
+        u.nickname AS name, <!-- 用户昵称 -->
+        u.avatar AS avatar, <!-- 用户头像 -->
+        SUM(fr.amount) AS amount <!-- 总捐款金额 -->
+        FROM
+        finance_records fr
+        JOIN
+        users u ON fr.user_id = u.id <!-- 关联用户表 -->
+        GROUP BY
+        fr.user_id <!-- 按用户分组 -->
+        ORDER BY
+        amount DESC <!-- 按捐款金额降序排序 -->
+        LIMIT 5; <!-- 只返回前五名 -->
+    </select>
+
+
+</mapper>

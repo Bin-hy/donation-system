@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mapper.NewsMapper">
+
+    <!-- 查询新闻 -->
+    <select id="getNews" resultType="com.example.model.News">
+        SELECT *
+        FROM news
+        <where>
+            <if test="title != null and title != ''">
+                AND title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="publisher != null and publisher != ''">
+                AND publisher = #{publisher}
+            </if>
+            <if test="startDate != null">
+                AND date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 添加新闻 -->
+    <insert id="addNews" parameterType="com.example.model.News">
+        INSERT INTO news (id, title, date, publisher, cover_url, type, content, is_recommended)
+        VALUES (#{id}, #{title}, #{date}, #{publisher}, #{coverUrl}, #{type}, #{content}, #{isRecommended})
+    </insert>
+
+    <!-- 更新新闻 -->
+    <update id="updateNews" parameterType="com.example.model.News">
+        UPDATE news
+        SET
+            title = #{title},
+            date = #{date},
+            publisher = #{publisher},
+            cover_url = #{coverUrl},
+            type = #{type},
+            content = #{content}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 批量删除新闻 -->
+    <delete id="batchDeleteNews">
+        DELETE FROM news
+        WHERE id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 更新推荐状态 -->
+    <update id="updateRecommendStatus">
+        UPDATE news
+        SET is_recommended = #{isRecommended}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectRecommendedNews" resultType="com.example.model.News">
+        SELECT id, title, date, publisher, content, cover_url AS coverUrl, type, is_recommended AS isRecommended
+        FROM news
+        WHERE is_recommended = 1
+        ORDER BY date DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.PublicInfoMapper">
+
+    <!-- 获取公示信息列表 -->
+    <select id="getPublicInfoList" resultType="com.example.model.PublicInfo">
+        SELECT
+        id,
+        type,
+        file_url AS fileUrl,
+        image_url AS imageUrl,  <!-- 新增 image_url -->
+        created_at AS createdAt,
+        updated_at AS updatedAt
+        FROM public_info
+    </select>
+
+    <!-- 更新公示信息 -->
+    <update id="updatePublicInfo" parameterType="com.example.model.PublicInfo">
+        UPDATE public_info
+        SET
+        type = #{type},
+        file_url = #{fileUrl},
+        image_url = #{imageUrl}  <!-- 新增 image_url -->
+        WHERE id = #{id}
+    </update>
+
+</mapper>

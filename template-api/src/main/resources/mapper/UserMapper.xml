@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- 根据用户名查询用户 -->
+    <select id="findByUsername" resultType="com.example.model.User">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+
+    <!-- 检查用户名是否已存在 -->
+    <select id="existsByUsername" resultType="int">
+        SELECT COUNT(*) FROM users WHERE username = #{username}
+    </select>
+
+    <!-- 保存用户信息 -->
+    <insert id="save">
+        INSERT INTO users (id, username, password, nickname, avatar, created_at, updated_at,is_banned,is_barrage_banned)
+        VALUES (#{id}, #{username}, #{password}, #{nickname}, #{avatar}, #{createdAt}, #{updatedAt},#{isBanned},#{isBarrageBanned})
+    </insert>
+
+    <!-- 根据用户 ID（UUID）查找用户 -->
+    <select id="findById" resultType="com.example.model.User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <select id="findUsers" resultType="com.example.model.User">
+        SELECT * FROM users
+        <where>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="nickname != null and nickname != ''">
+                AND nickname LIKE CONCAT('%', #{nickname}, '%')
+            </if>
+            <if test="email != null and email != ''">
+                AND email LIKE CONCAT('%', #{email}, '%')
+            </if>
+            <if test="phone != null and phone != ''">
+                AND phone LIKE CONCAT('%', #{phone}, '%')
+            </if>
+        </where>
+    </select>
+
+    <!-- 更新用户信息 -->
+    <update id="update">
+        UPDATE users
+        <set>
+            <if test="email != null">email = #{email},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 批量删除用户 -->
+    <delete id="batchDelete">
+        DELETE FROM users WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+    <!-- 更新用户信息 -->
+    <update id="updateUser">
+        UPDATE users
+        SET username          = #{username},
+        password          = #{password},
+        email             = #{email},
+        phone             = #{phone},
+        nickname          = #{nickname},
+        avatar            = #{avatar},
+        is_banned         = #{isBanned},
+        is_barrage_banned = #{isBarrageBanned},
+        updated_at        = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+
+    <!-- 获取弹幕列表 -->
+    <select id="selectBarrages" resultType="com.example.vo.BarrageVO">
+        SELECT
+        b.id,
+        b.user_id AS userId,
+        b.content,
+        b.created_at AS createdAt,
+        u.username,
+        u.nickname,
+        u.avatar,
+        u.is_barrage_banned AS isBarrageBanned
+        FROM danmu b
+        JOIN users u ON b.user_id = u.id
+        WHERE 1=1
+        <if test="username != null and username != ''">
+            AND u.username LIKE CONCAT('%', #{username}, '%')
+        </if>
+        <if test="nickname != null and nickname != ''">
+            AND u.nickname LIKE CONCAT('%', #{nickname}, '%')
+        </if>
+        <if test="startDate != null">
+            AND b.created_at >= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND b.created_at &lt;= #{endDate}
+        </if>
+        ORDER BY b.created_at DESC
+    </select>
+
+    <!-- 删除弹幕 -->
+    <delete id="deleteBarrageById">
+        DELETE FROM danmu
+        WHERE id = #{id}
+    </delete>
+
+
+    <update id="updateById" parameterType="com.example.model.User">
+        UPDATE
+        users
+        SET
+        <if test="nickname != null">nickname = #{nickname},</if>
+        <if test="email != null">email = #{email},</if>
+        <if test="phone != null">phone = #{phone},</if>
+        <if test="avatar != null">avatar = #{avatar},</if>
+        <if test="password != null">password = #{password},</if>
+        updated_at = #{updatedAt}
+        WHERE
+        id = #{id}
+    </update>
+
+
+    <!-- 根据用户 ID 查询用户信息 -->
+    <select id="selectById" resultType="com.example.model.User">
+        SELECT
+            id,
+            username,
+            password,
+            nickname,
+            email,
+            phone,
+            avatar,
+            is_barrage_banned,
+            created_at,
+            updated_at
+        FROM
+            users
+        WHERE
+            id = #{userId}
+    </select>
+
+
+    <!-- 添加弹幕 -->
+    <insert id="addBarrage" parameterType="com.example.model.Danmu">
+        INSERT INTO danmu (id, user_id, content, created_at)
+        VALUES (
+                   #{id},
+                   #{userId},
+                   #{content},
+                   #{createdAt}
+               )
+    </insert>
+
+
+    <!-- 插入用户反馈信息 -->
+    <insert id="insertFeedback" parameterType="com.example.model.Feedback">
+        INSERT INTO feedback (id,user_id,project_id, name, phone, message, create_time)
+        VALUES (#{id}, #{userId},#{projectId},#{name}, #{phone}, #{message}, #{createTime})
+    </insert>
+
+
+    <select id="getFeedback" resultType="com.example.vo.FeedbackVO">
+        SELECT
+        f.id,
+        f.name AS realName,
+        f.phone,
+        f.message,
+        f.create_time AS createTime,
+        u.nickname,
+        u.avatar,
+        p.title AS projectTitle, -- 项目名称
+        p.image AS projectImage -- 项目封面图片
+        FROM
+        feedback f
+        LEFT JOIN
+        users u ON f.user_id = u.id -- 关联用户表
+        LEFT JOIN
+        projects p ON f.project_id = p.id -- 关联项目表
+        <where>
+            <if test="name != null and name != ''">
+                AND f.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="startDate != null">
+                AND f.create_time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND f.create_time &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY
+        f.create_time DESC
+    </select>
+
+
+    <!-- 批量删除消息 -->
+    <delete id="deleteBatch">
+        DELETE FROM feedback
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+    <!-- 插入捐款记录 -->
+    <insert id="submitDonation" parameterType="com.example.model.FinanceRecord">
+        INSERT INTO finance_records (
+            id,
+            project_id,
+            user_id,
+            amount,
+            time,
+            category,
+            payment_method,
+            is_foreign,
+            address
+        ) VALUES (
+                     #{id},
+                     #{projectId},
+                     #{userId},
+                     #{amount},
+                     #{time},
+                     #{category},
+                     #{paymentMethod},
+                     #{isForeign},
+                     #{address}
+                 )
+    </insert>
+
+    <select id="existsByNickname" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM users WHERE nickname = #{nickname}
+    </select>
+
+
+</mapper>

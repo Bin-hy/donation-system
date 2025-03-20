@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.mapper.ProjectMapper">
+
+    <resultMap id="ProjectResultMap" type="com.example.model.Project">
+        <!-- 项目表字段映射 -->
+        <id property="id" column="project_id" />
+        <result property="title" column="title" />
+        <result property="recordNumber" column="record_number" />
+        <result property="startDate" column="start_date" />
+        <result property="endDate" column="end_date" />
+        <result property="image" column="image" />
+        <result property="targetAmount" column="target_amount" />
+        <result property="raisedAmount" column="raised_amount" />
+        <result property="donationCount" column="donation_count" />
+        <result property="details" column="details" />
+        <result property="category" column="category" />
+        <result property="isRecommended" column="is_recommended" /> <!-- 映射 TINYINT(1) 字段 -->
+
+        <!-- 嵌套对象：OrgInfo -->
+        <association property="orgInfo" javaType="com.example.model.OrgInfo">
+            <id property="id" column="org_info_id" />
+            <result property="projectId" column="project_id" />
+            <result property="initiator" column="initiator" />
+            <result property="receiver" column="receiver" />
+            <result property="executor" column="executor" />
+        </association>
+
+        <!-- 嵌套对象：ProjectInfo -->
+        <association property="projectInfo" javaType="com.example.model.ProjectInfo">
+            <id property="id" column="project_info_id" />
+            <result property="projectId" column="project_id" />
+            <result property="purpose" column="purpose" />
+            <result property="cost" column="cost" />
+            <result property="surplusPlan" column="surplus_plan" />
+            <result property="invoiceMethod" column="invoice_method" />
+            <result property="contact" column="contact" />
+            <result property="fundUsage" column="fund_usage" />
+            <result property="beneficiaries" column="beneficiaries" />
+            <result property="leader" column="leader" />
+        </association>
+    </resultMap>
+
+    <select id="getProjects" resultMap="ProjectResultMap">
+        SELECT
+        p.id AS project_id,
+        p.title,
+        p.record_number,
+        p.start_date,
+        p.end_date,
+        p.image,
+        p.target_amount,
+        p.raised_amount,
+        p.donation_count,
+        p.details,
+        p.category,
+        p.is_recommended, <!-- 仍然查询 is_recommended 字段，但不作为查询条件 -->
+
+        o.id AS org_info_id,
+        o.initiator,
+        o.receiver,
+        o.executor,
+
+        pi.id AS project_info_id,
+        pi.purpose,
+        pi.cost,
+        pi.surplus_plan,
+        pi.invoice_method,
+        pi.contact,
+        pi.fund_usage,
+        pi.beneficiaries,
+        pi.leader
+        FROM
+        projects p
+        LEFT JOIN
+        org_info o ON p.id = o.project_id
+        LEFT JOIN
+        project_info pi ON p.id = pi.project_id
+        <where>
+            <!-- 项目名称模糊查询 -->
+            <if test="title != null and title != ''">
+                AND p.title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <!-- 项目编号精确查询 -->
+            <if test="recordNumber != null and recordNumber != ''">
+                AND p.record_number = #{recordNumber}
+            </if>
+            <!-- 项目分类精确查询 -->
+            <if test="category != null">
+                AND p.category = #{category}
+            </if>
+            <!-- 时间范围查询 -->
+            <if test="startDate != null and endDate != null">
+                AND (
+                (p.start_date BETWEEN #{startDate} AND #{endDate}) -- 开始时间在查询范围内
+                OR (p.end_date BETWEEN #{startDate} AND #{endDate}) -- 结束时间在查询范围内
+                OR (p.start_date &lt;= #{startDate} AND p.end_date >= #{endDate}) -- 完全包含查询范围
+                )
+            </if>
+        </where>
+        ORDER BY
+        p.start_date DESC
+    </select>
+
+    <update id="updateProjectRecommendStatus">
+        UPDATE projects
+        SET `is_recommended` = #{isRecommended}
+        WHERE `id` = #{id}
+    </update>
+    <!-- 根据项目ID查询单个项目详情 -->
+    <select id="getProjectById" resultMap="ProjectResultMap">
+        SELECT
+            p.id AS project_id,
+            p.title,
+            p.record_number,
+            p.start_date,
+            p.end_date,
+            p.image,
+            p.target_amount,
+            p.raised_amount,
+            p.donation_count,
+            p.details,
+
+            o.id AS org_info_id,
+            o.initiator,
+            o.receiver,
+            o.executor,
+
+            pi.id AS project_info_id,
+            pi.purpose,
+            pi.cost,
+            pi.surplus_plan,
+            pi.invoice_method,
+            pi.contact,
+            pi.fund_usage,
+            pi.beneficiaries,
+            pi.leader
+        FROM
+            projects p
+                LEFT JOIN
+            org_info o ON p.id = o.project_id
+                LEFT JOIN
+            project_info pi ON p.id = pi.project_id
+        WHERE
+            p.id = #{id}
+    </select>
+
+    <insert id="insertProject">
+        INSERT INTO projects (
+        id, title, record_number, target_amount, raised_amount,
+        donation_count, start_date, end_date, details, image,
+        category, is_recommended <!-- 插入 is_recommended 字段 -->
+        ) VALUES (
+        #{id}, #{title}, #{recordNumber}, #{targetAmount}, #{raisedAmount},
+        #{donationCount}, #{startDate}, #{endDate}, #{details}, #{image},
+        #{category}, #{isRecommended} <!-- 绑定 isRecommended 参数 -->
+        )
+    </insert>
+
+    <!-- 插入机构信息 -->
+    <insert id="insertOrgInfo">
+        INSERT INTO org_info (
+            id, project_id, initiator, receiver, executor
+        ) VALUES (
+                     #{id}, #{projectId}, #{initiator}, #{receiver}, #{executor}
+                 )
+    </insert>
+
+    <!-- 插入项目信息 -->
+    <insert id="insertProjectInfo">
+        INSERT INTO project_info (
+            id, project_id, purpose, cost, surplus_plan, invoice_method,
+            contact, fund_usage, beneficiaries, leader
+        ) VALUES (
+                     #{id}, #{projectId}, #{purpose}, #{cost}, #{surplusPlan}, #{invoiceMethod},
+                     #{contact}, #{fundUsage}, #{beneficiaries}, #{leader}
+                 )
+    </insert>
+
+
+    <update id="updateProject">
+        UPDATE projects
+        SET
+        title = #{title},
+        record_number = #{recordNumber},
+        target_amount = #{targetAmount},
+        raised_amount = #{raisedAmount},
+        donation_count = #{donationCount},
+        start_date = #{startDate},
+        end_date = #{endDate},
+        details = #{details},
+        image = #{image},
+        category = #{category}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新机构信息 -->
+    <update id="updateOrgInfo">
+        UPDATE org_info
+        SET
+            initiator = #{initiator},
+            receiver = #{receiver},
+            executor = #{executor}
+        WHERE project_id = #{projectId}
+    </update>
+
+    <!-- 更新项目信息 -->
+    <update id="updateProjectInfo">
+        UPDATE project_info
+        SET
+            purpose = #{purpose},
+            cost = #{cost},
+            surplus_plan = #{surplusPlan},
+            invoice_method = #{invoiceMethod},
+            contact = #{contact},
+            fund_usage = #{fundUsage},
+            beneficiaries = #{beneficiaries},
+            leader = #{leader}
+        WHERE project_id = #{projectId}
+    </update>
+
+
+    <!-- 批量删除项目基本信息 -->
+    <delete id="batchDeleteProjects">
+        DELETE FROM projects WHERE id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 批量删除机构信息 -->
+    <delete id="batchDeleteOrgInfoByProjectIds">
+        DELETE FROM org_info WHERE project_id IN
+        <foreach collection="list" item="projectId" open="(" separator="," close=")">
+            #{projectId}
+        </foreach>
+    </delete>
+
+    <!-- 批量删除项目信息 -->
+    <delete id="batchDeleteProjectInfoByProjectIds">
+        DELETE FROM project_info WHERE project_id IN
+        <foreach collection="list" item="projectId" open="(" separator="," close=")">
+            #{projectId}
+        </foreach>
+    </delete>
+
+    <!-- 查询捐款评价列表 -->
+    <select id="selectList" resultType="com.example.vo.ProjectReviewVO">
+        SELECT
+        pr.id,
+        pr.project_id AS projectId,
+        pr.user_id AS userId,
+        pr.review,
+        pr.is_banned AS isBanned,
+        pr.created_at AS createdAt,
+        pr.updated_at AS updatedAt,
+        u.nickname AS reviewer, -- 评价人昵称
+        u.avatar AS reviewerAvatar, -- 评价人头像
+        p.title AS projectTitle -- 项目名称
+        FROM
+        project_reviews pr
+        JOIN
+        users u ON pr.user_id = u.id -- 连接 users 表
+        JOIN
+        projects p ON pr.project_id = p.id -- 连接 projects 表
+        <where>
+            <!-- 评价人模糊查询 -->
+            <if test="reviewer != null and reviewer != ''">
+                AND u.nickname LIKE CONCAT('%', #{reviewer}, '%')
+            </if>
+            <!-- 开始日期 -->
+            <if test="startDate != null">
+                AND pr.created_at &gt;= #{startDate}
+            </if>
+            <!-- 结束日期 -->
+            <if test="endDate != null">
+                AND pr.created_at &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY pr.created_at DESC
+    </select>
+
+
+    <delete id="batchDeleteProjectReviews">
+        DELETE FROM project_reviews
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+
+    <update id="updateById">
+        UPDATE project_reviews
+        SET
+            is_banned = #{isBanned},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+
+    <select id="selectById" resultType="com.example.model.ProjectReview">
+        SELECT
+            id,
+            project_id AS projectId,
+            user_id AS userId,
+            review,
+            is_banned AS isBanned,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+        FROM
+            project_reviews
+        WHERE
+            id = #{id}
+    </select>
+
+
+    <select id="selectFinanceRecords" resultType="com.example.vo.FinanceRecordVO">
+        SELECT
+        fr.id,
+        fr.project_id AS projectId,
+        p.title AS projectName, <!-- 项目名称 -->
+        fr.user_id AS userId,
+        u.nickname AS username, <!-- 用户昵称 -->
+        u.avatar AS userAvatar, <!-- 用户头像地址 -->
+        fr.amount,
+        fr.time,
+        fr.category,
+        fr.payment_method AS paymentMethod,
+        fr.is_foreign AS isForeign,
+        fr.address
+        FROM
+        finance_records fr
+        LEFT JOIN
+        projects p ON fr.project_id = p.id <!-- 关联项目表 -->
+        LEFT JOIN
+        users u ON fr.user_id = u.id <!-- 关联用户表 -->
+        <where>
+            <!-- 项目名称模糊查询 -->
+            <if test="projectName != null and projectName != ''">
+                AND p.title LIKE CONCAT('%', #{projectName}, '%')
+            </if>
+            <!-- 地址模糊查询 -->
+            <if test="address != null and address != ''">
+                AND fr.address LIKE CONCAT('%', #{address}, '%')
+            </if>
+            <!-- 时间范围查询 -->
+            <if test="startDate != null">
+                AND fr.time &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND fr.time &lt;= #{endDate}
+            </if>
+            <!-- 支付方式查询 -->
+            <if test="paymentMethod != null">
+                AND fr.payment_method = #{paymentMethod}
+            </if>
+            <!-- 用户昵称模糊查询 -->
+            <if test="username != null and username != ''">
+                AND u.nickname LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <!-- 金额范围查询 -->
+            <if test="minAmount != null">
+                AND fr.amount &gt;= #{minAmount}
+            </if>
+            <if test="maxAmount != null">
+                AND fr.amount &lt;= #{maxAmount}
+            </if>
+            <!-- 交易类型查询 -->
+            <if test="category != null and category != ''">
+                AND fr.category = #{category}
+            </if>
+            <!-- 捐赠人类型查询 -->
+            <if test="donorType != null and donorType != ''">
+                AND u.type = #{donorType} <!-- 假设用户表中有 type 字段表示捐赠人类型 -->
+            </if>
+        </where>
+        ORDER BY fr.time DESC
+    </select>
+
+
+    <select id="selectRecommendedProjects" resultType="com.example.model.Project">
+        SELECT
+            id,
+            image,
+            title,
+            record_number AS recordNumber,
+            target_amount AS targetAmount,
+            raised_amount AS raisedAmount,
+            donation_count AS donationCount,
+            start_date AS startDate,
+            end_date AS endDate,
+            details,
+            category,
+            is_recommended AS isRecommended
+        FROM projects
+        WHERE is_recommended = 1
+        ORDER BY start_date DESC
+    </select>
+
+    <select id="selectReviewDetailById" resultType="com.example.vo.ProjectReviewDetailVO">
+        SELECT
+        pr.id,
+        pr.project_id AS projectId,
+        pr.user_id AS userId,
+        pr.review,
+        pr.is_banned AS isBanned,
+        pr.created_at AS createdAt,
+        pr.updated_at AS updatedAt,
+        u.nickname AS reviewer, <!-- 评价人昵称 -->
+        u.avatar AS reviewerAvatar, <!-- 评价人头像 -->
+        p.title AS projectTitle <!-- 项目名称 -->
+        FROM
+        project_reviews pr
+        LEFT JOIN
+        users u ON pr.user_id = u.id <!-- 关联用户表 -->
+        LEFT JOIN
+        projects p ON pr.project_id = p.id <!-- 关联项目表 -->
+        WHERE
+        pr.project_id = #{id} <!-- 将 projectId 改为 id -->
+        AND pr.is_banned = 0 <!-- 只查询未封禁的评价 -->
+        ORDER BY
+        pr.created_at DESC
+    </select>
+
+
+    <!-- 插入留言数据 -->
+    <insert id="submitReview" parameterType="com.example.model.ProjectReview">
+        INSERT INTO project_reviews (
+            id,
+            project_id,
+            user_id,
+            review,
+            is_banned,
+            created_at,
+            updated_at
+        ) VALUES (
+                     #{id},
+                     #{projectId},
+                     #{userId},
+                     #{review},
+                     #{isBanned},
+                     #{createdAt},
+                     #{updatedAt}
+                 )
+    </insert>
+
+
+    <!-- 更新项目的已筹金额和爱心次数 -->
+    <update id="updateProjectAfterDonation">
+        UPDATE projects
+        SET raised_amount = raised_amount + #{amount},
+            donation_count = donation_count + 1
+        WHERE id = #{projectId}
+    </update>
+
+
+
+
+
+</mapper>
