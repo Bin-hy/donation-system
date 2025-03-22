@@ -1,0 +1,89 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: dockers/backend.Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/jiang_donation?useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 0714@Xhy
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./BackEnd/config:/app/config
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - donation-network
+
+  mysql:
+    image: mysql:8.0 # https://hub.docker.com/_/mysql/
+    container_name: deploy-mysql
+    restart: unless-stopped #  指定了容器的重启策略，除了手动停止容器，其他情况都自动重启容器
+    environment:
+      - TZ=Asia/Shanghai # 指定了容器的环境变量，设置容器的时区为上海时区
+      - LANG=en_US.UTF-8 # 指定了容器的环境变量，设置容器的编码为UTF-8
+      # - MYSQL_ROOT_HOST='%'
+      - MYSQL_ROOT_PASSWORD=0714@Xhy
+      - MYSQL_USER=jiang_user
+      - MYSQL_PASSWORD=jiang_password
+    # ports:
+    #   - 3306:3306
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    command:  
+      --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./dockers/mysql/db:/var/lib/mysql
+      - ./dockers/mysql/conf:/etc/mysql/conf.d/custom.cnf
+      - ./dockers/mysql/logs:/var/log/mysql
+      - ./dockers/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - donation-network
+
+  redis:
+    image: redis:alpine
+    command: redis-server /usr/local/etc/redis/redis.conf # 关键修复
+    volumes:
+      - ./dockers/redis/data:/data
+      - ./dockers/redis/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./dockers/redis/logs:/logs
+    # ports:
+    #   - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - donation-network
+
+  frontend-user:
+    build:
+      context: .
+      dockerfile: dockers/frontend-user.Dockerfile
+    ports:
+      - "8081:80"
+    networks:
+      - donation-network
+
+  frontend-admin:
+    build:
+      context: .
+      dockerfile: dockers/frontend-admin.Dockerfile
+    ports:
+      - "8082:80"
+    networks:
+      - donation-network
+
+networks:
+  donation-network:
+    driver: bridge
