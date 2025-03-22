@@ -17,7 +17,6 @@ public interface UserService {
     Result<UserInfoVO> getUserInfo(String token);
 
     Result<VerifyCodeVO> generateVerificationCode(); // 生成验证码
-//    Result sendEmailCode();
     User login(String username, String password) throws Exception;
 
     void updateUser(User user);

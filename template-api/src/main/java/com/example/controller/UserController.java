@@ -75,10 +75,7 @@ public class UserController {
         return userService.generateVerificationCode();
     }
 
-    public Result getEmailCode(String email) {
 
-        return Result.success();
-    }
 
     // 获取用户信息
     @GetMapping("/info")

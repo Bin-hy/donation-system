@@ -1,6 +1,15 @@
 package com.example.dto;
 
+import lombok.Data;
+
+/**
+ * 功能：
+ *
+ * @author 熊浩毅
+ * @time 2025-03-23 0:11
+ * @Description
+ */
+@Data
 public class EmailDTO {
-    private String type;  // email类型 ， 注册 | 找回
-    private String email; // 给哪个email
+    String email;
 }

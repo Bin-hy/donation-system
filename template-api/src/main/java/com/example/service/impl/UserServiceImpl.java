@@ -1,8 +1,10 @@
 package com.example.service.impl;
 
-import cn.hutool.captcha.CircleCaptcha;
 import com.example.context.BaseContext;
-import com.example.dto.*;
+import com.example.dto.FeedbackDTO;
+import com.example.dto.FinanceRecordDTO;
+import com.example.dto.RegisterRequest;
+import com.example.dto.UserProfileDTO;
 import com.example.handler.WebSocketHandler;
 import com.example.mapper.ProjectMapper;
 import com.example.mapper.UserMapper;
@@ -10,6 +12,7 @@ import com.example.model.Danmu;
 import com.example.model.Feedback;
 import com.example.model.FinanceRecord;
 import com.example.model.User;
+import com.example.service.EmailService;
 import com.example.service.UserService;
 import com.example.util.BaiduMapUtil;
 import com.example.util.Result;
@@ -35,6 +38,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private BaiduMapUtil baiduMapUtil;
+
+    @Autowired
+    private EmailService emailService;
 
     @Autowired
     private VerifyCodeUtil verifyCodeUtil;
@@ -68,6 +74,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Result<String> register(RegisterRequest registerRequest) {
+
+        // 检查邮箱验证码是否正确
+        if(!emailService.checkEmailCode(registerRequest.getEmailTo(), registerRequest.getEmailCode())){
+            return Result.error("邮箱验证码错误");
+        }
         // 1. 检查用户名是否已存在
         if (userMapper.existsByUsername(registerRequest.getUsername()) > 0) {
             return Result.error("用户名已存在");
@@ -125,6 +136,8 @@ public class UserServiceImpl implements UserService {
         return Result.success(verifyCodeUtil.getVerifyCode());
 
     }
+
+
 
     @Override
     public List<User> getUsers(String username, String nickname, String email, String phone) {
