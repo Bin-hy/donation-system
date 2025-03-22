@@ -18,6 +18,16 @@ spring:
       host: localhost
       port: 6379
       password: myRedisPassword
+  mail: # 邮箱
+    host: smtp.163.com
+    username: lubaekApi@163.com # 邮箱地址
+    password: LZievMbRbXqHCgeE # 授权码
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml

@@ -1,5 +1,6 @@
 package com.example.service.impl;
 
+import cn.hutool.captcha.CircleCaptcha;
 import com.example.context.BaseContext;
 import com.example.dto.*;
 import com.example.handler.WebSocketHandler;
@@ -11,12 +12,9 @@ import com.example.model.FinanceRecord;
 import com.example.model.User;
 import com.example.service.UserService;
 import com.example.util.BaiduMapUtil;
-import com.example.util.JwtUtil;
 import com.example.util.Result;
-import com.example.vo.BarrageVO;
-import com.example.vo.FeedbackVO;
-import com.example.vo.UserInfoVO;
-import com.example.vo.UserProfileVO;
+import com.example.util.VerifyCodeUtil;
+import com.example.vo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +35,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private BaiduMapUtil baiduMapUtil;
+
+    @Autowired
+    private VerifyCodeUtil verifyCodeUtil;
 
     @Autowired
     private ProjectMapper projectMapper;
@@ -117,6 +118,12 @@ public class UserServiceImpl implements UserService {
 
         // 4. 返回用户信息
         return Result.success(userInfo);
+    }
+
+    @Override
+    public Result<VerifyCodeVO> generateVerificationCode() {
+        return Result.success(verifyCodeUtil.getVerifyCode());
+
     }
 
     @Override

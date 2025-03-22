@@ -1,13 +1,9 @@
 package com.example.service;
 
 import com.example.dto.*;
-import com.example.model.Feedback;
 import com.example.model.User;
 import com.example.util.Result;
-import com.example.vo.BarrageVO;
-import com.example.vo.FeedbackVO;
-import com.example.vo.UserInfoVO;
-import com.example.vo.UserProfileVO;
+import com.example.vo.*;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -20,6 +16,8 @@ public interface UserService {
 
     Result<UserInfoVO> getUserInfo(String token);
 
+    Result<VerifyCodeVO> generateVerificationCode(); // 生成验证码
+//    Result sendEmailCode();
     User login(String username, String password) throws Exception;
 
     void updateUser(User user);

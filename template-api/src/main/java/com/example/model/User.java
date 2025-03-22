@@ -19,6 +19,7 @@ public class User {
     @Column
     private String email; // 邮箱
 
+
     @Column
     private String phone; // 电话
 

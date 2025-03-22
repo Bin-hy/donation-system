@@ -20,6 +20,14 @@
           <img src="@/assets/password.png" alt="密码图标" class="icon" />
           <input type="password" placeholder="密码" v-model="loginPassword" />
         </div>
+        <!-- 验证码输入框 - 新布局 -->
+        <div class="input-field verify-field">
+          <div class="verify-code-img" @click="refreshVerifyCode">
+            <img v-if="verifyImageBase64" :src="verifyImageBase64" alt="验证码" />
+            <img v-else src="@/assets/error-verify.png" alt="验证码加载失败" class="error-image" />
+          </div>
+          <input type="text" placeholder="验证码" v-model="loginVerifyCode" />
+        </div>
         <input type="submit" value="立即登录" class="btn solid" />
         <p class="toggle-text">
           没有账号？
@@ -42,6 +50,14 @@
           <img src="@/assets/password.png" alt="确认密码图标" class="icon" />
           <input type="password" placeholder="确认密码" v-model="confirmPassword" />
         </div>
+        <!-- 验证码输入框 - 新布局 -->
+        <div class="input-field verify-field">
+          <div class="verify-code-img" @click="refreshVerifyCode">
+            <img v-if="verifyImageBase64" :src="verifyImageBase64" alt="验证码" />
+            <img v-else src="@/assets/error-verify.png" alt="验证码加载失败" class="error-image" />
+          </div>
+          <input type="text" placeholder="验证码" v-model="registerVerifyCode" />
+        </div>
         <input type="submit" value="立即注册" class="btn solid" />
         <p class="toggle-text">
           已有账号？
@@ -53,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElNotification } from 'element-plus';
 import api from '@/api/api';
@@ -71,11 +87,67 @@ const isLogin = ref(true);
 // 登录表单数据
 const loginUsername = ref('');
 const loginPassword = ref('');
+const loginVerifyCode = ref('');
 
 // 注册表单数据
 const registerUsername = ref('');
 const registerPassword = ref('');
 const confirmPassword = ref('');
+const registerVerifyCode = ref('');
+
+// 验证码相关
+const verifyImageBase64 = ref('');
+const verifyCodeValue = ref('');
+
+// 获取验证码
+const getVerifyCode = async () => {
+  try {
+    const response = await api.get('/user/verifyCode');
+    if (response.data && response.data.data) {
+      // 确保添加前缀，如果后端返回的不包含前缀
+      const imageData = response.data.data.imageBase64;
+      // 检查是否已经包含 data:image 前缀
+      verifyImageBase64.value = imageData.startsWith('data:image') 
+        ? imageData 
+        : `data:image/png;base64,${imageData}`;
+      
+      // 保存验证码的值用于前端校验
+      verifyCodeValue.value = response.data.data.code;
+    } else {
+      ElNotification({
+        title: '错误',
+        message: '获取验证码失败',
+        type: 'error',
+        position: 'top-right',
+        duration: 3000,
+      });
+    }
+  } catch (error) {
+    ElNotification({
+      title: '错误',
+      message: '网络错误，请稍后重试',
+      type: 'error',
+      position: 'top-right',
+      duration: 3000,
+    });
+  }
+};
+
+// 刷新验证码
+const refreshVerifyCode = () => {
+  getVerifyCode();
+};
+
+// 组件挂载时获取验证码
+onMounted(() => {
+  getVerifyCode();
+});
+
+// 验证码校验函数
+const validateVerifyCode = (inputCode) => {
+  // 不区分大小写比较
+  return inputCode.toLowerCase() === verifyCodeValue.value.toLowerCase();
+};
 
 // 处理登录
 const handleLogin = async () => {
@@ -91,16 +163,44 @@ const handleLogin = async () => {
     return;
   }
 
+  // 检查验证码是否为空
+  if (!loginVerifyCode.value) {
+    ElNotification({
+      title: '提示',
+      message: '请输入验证码',
+      type: 'warning',
+      position: 'top-right',
+      duration: 3000,
+    });
+    return;
+  }
+
+  // 前端验证验证码
+  if (!validateVerifyCode(loginVerifyCode.value)) {
+    ElNotification({
+      title: '提示',
+      message: '验证码错误',
+      type: 'warning',
+      position: 'top-right',
+      duration: 3000,
+    });
+    // 刷新验证码
+    getVerifyCode();
+    // 清空验证码输入
+    loginVerifyCode.value = '';
+    return;
+  }
+
   try {
     // 发起登录请求
     const response = await api.post('/user/login', {
       username: loginUsername.value,
-      password: loginPassword.value,
+      password: loginPassword.value
     });
 
     // 登录成功
     if (response.data.code === 200) {
-      const { token, isBanned , uuid} = response.data.data;
+      const { token, isBanned, uuid } = response.data.data;
 
       // 将 isBanned 转换为数字类型
       const isBannedNumber = Number(isBanned);
@@ -142,6 +242,10 @@ const handleLogin = async () => {
         position: 'top-right',
         duration: 3000,
       });
+      // 刷新验证码
+      getVerifyCode();
+      // 清空验证码输入
+      loginVerifyCode.value = '';
     }
   } catch (error) {
     // 网络错误
@@ -152,6 +256,10 @@ const handleLogin = async () => {
       position: 'top-right',
       duration: 3000,
     });
+    // 刷新验证码
+    getVerifyCode();
+    // 清空验证码输入
+    loginVerifyCode.value = '';
   }
 };
 
@@ -169,12 +277,11 @@ const handleRegister = async () => {
     return;
   }
 
-  // 验证账号是否为纯数字的九位数
-  const usernameRegex = /^\d{10}$/;
-  if (!usernameRegex.test(registerUsername.value)) {
+  // 检查验证码是否为空
+  if (!registerVerifyCode.value) {
     ElNotification({
       title: '提示',
-      message: '账号必须是纯数字的十位数',
+      message: '请输入验证码',
       type: 'warning',
       position: 'top-right',
       duration: 3000,
@@ -182,18 +289,47 @@ const handleRegister = async () => {
     return;
   }
 
-  // 验证密码是否为字母和数字的组合
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-  if (!passwordRegex.test(registerPassword.value)) {
+  // 前端验证验证码
+  if (!validateVerifyCode(registerVerifyCode.value)) {
     ElNotification({
       title: '提示',
-      message: '密码必须是字母和数字的组合，且至少8位',
+      message: '验证码错误',
       type: 'warning',
       position: 'top-right',
       duration: 3000,
     });
+    // 刷新验证码
+    getVerifyCode();
+    // 清空验证码输入
+    registerVerifyCode.value = '';
     return;
   }
+
+  // // 验证账号是否为纯数字的十位数
+  // const usernameRegex = /^\d{10}$/;
+  // if (!usernameRegex.test(registerUsername.value)) {
+  //   ElNotification({
+  //     title: '提示',
+  //     message: '账号必须是纯数字的十位数',
+  //     type: 'warning',
+  //     position: 'top-right',
+  //     duration: 3000,
+  //   });
+  //   return;
+  // }
+
+  // // 验证密码是否为字母和数字的组合
+  // const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+  // if (!passwordRegex.test(registerPassword.value)) {
+  //   ElNotification({
+  //     title: '提示',
+  //     message: '密码必须是字母和数字的组合，且至少8位',
+  //     type: 'warning',
+  //     position: 'top-right',
+  //     duration: 3000,
+  //   });
+  //   return;
+  // }
 
   // 验证密码和确认密码是否一致
   if (registerPassword.value !== confirmPassword.value) {
@@ -208,10 +344,10 @@ const handleRegister = async () => {
   }
 
   try {
-    // 发起注册请求
+    // 发起注册请求 - 不需要发送验证码
     const response = await api.post('/user/register', {
       username: registerUsername.value,
-      password: registerPassword.value,
+      password: registerPassword.value
     });
     // 注册成功
     if (response.data.code === 200) {
@@ -227,9 +363,13 @@ const handleRegister = async () => {
       registerUsername.value = '';
       registerPassword.value = '';
       confirmPassword.value = '';
+      registerVerifyCode.value = '';
 
       // 切换回登录表单
       isLogin.value = true;
+      
+      // 刷新验证码
+      getVerifyCode();
     } else {
       // 注册失败
       ElNotification({
@@ -239,6 +379,10 @@ const handleRegister = async () => {
         position: 'top-right',
         duration: 3000,
       });
+      // 刷新验证码
+      getVerifyCode();
+      // 清空验证码输入
+      registerVerifyCode.value = '';
     }
   } catch (error) {
     // 请求失败
@@ -249,12 +393,21 @@ const handleRegister = async () => {
       position: 'top-right',
       duration: 3000,
     });
+    // 刷新验证码
+    getVerifyCode();
+    // 清空验证码输入
+    registerVerifyCode.value = '';
   }
 };
 
 // 切换登录/注册表单
 const toggleForm = () => {
   isLogin.value = !isLogin.value;
+  // 切换表单时刷新验证码
+  getVerifyCode();
+  // 清空验证码输入
+  loginVerifyCode.value = '';
+  registerVerifyCode.value = '';
 };
 </script>
 
@@ -368,6 +521,33 @@ form {
   font-weight: 500;
 }
 
+/* 验证码输入框 - 新样式 */
+.verify-field {
+  grid-template-columns: 30% 70%; /* 调整验证码图片和输入框的比例 */
+}
+
+.verify-code-img {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.verify-code-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 5px;
+}
+
+.error-image {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
 /* 按钮 */
 .btn {
   width: 100%;
@@ -439,6 +619,11 @@ form {
 
   .title {
     font-size: 1.8rem; /* 缩小标题 */
+  }
+  
+  /* 移动端验证码布局调整 */
+  .verify-field {
+    grid-template-columns: 30% 70%; /* 保持相同的比例 */
   }
 }
 </style>

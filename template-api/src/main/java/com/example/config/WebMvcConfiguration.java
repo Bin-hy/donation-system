@@ -32,6 +32,7 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
                 .addPathPatterns("/user/**")
                 .excludePathPatterns(
                         "/user/login",
+                        "/user/verifyCode", // 获取验证码
                         "/user/news/recommend",
                         "/user/projects/recommend",
                         "/user/register",

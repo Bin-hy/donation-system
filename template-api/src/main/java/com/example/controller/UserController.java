@@ -70,6 +70,15 @@ public class UserController {
     public Result<String> register(@RequestBody RegisterRequest registerRequest) {
         return userService.register(registerRequest);
     }
+    @GetMapping("/verifyCode")
+    public Result<VerifyCodeVO> getCaptcha() {
+        return userService.generateVerificationCode();
+    }
+
+    public Result getEmailCode(String email) {
+
+        return Result.success();
+    }
 
     // 获取用户信息
     @GetMapping("/info")
