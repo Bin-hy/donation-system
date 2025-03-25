@@ -17,7 +17,7 @@ public class FilesServiceImpl implements FilesService {
         try {
             // 上传图片到阿里云 OSS
             String fileName = file.getOriginalFilename();
-            String objectName = "projects/" + fileName; // 你可以根据需要修改路径
+            String objectName = "donationProjects/" + fileName; // 你可以根据需要修改路径
             return aliOSSUtils.upload(file.getBytes(), objectName);
         } catch (Exception e) {
             throw new RuntimeException("图片上传失败", e);
